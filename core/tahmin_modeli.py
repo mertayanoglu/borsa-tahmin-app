@@ -114,9 +114,9 @@ if "tahminler" not in st.session_state:
     if os.path.exists("tahmin_log.json"):
         with open("tahmin_log.json", "r") as f:
             try:
-            st.session_state["tahminler"] = json.load(f)
+                st.session_state["tahminler"] = json.load(f)
             except json.JSONDecodeError:
-            st.session_state["tahminler"] = []
+                st.session_state["tahminler"] = []
 
     else:
         st.session_state["tahminler"] = []
