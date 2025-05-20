@@ -75,7 +75,7 @@ def tahmin_uret(symbol):
             "Hedef Fiyat": target_price
         }
     except Exception as e:
-        return {
+                    "Güncel Fiyat": current_price if change_pct is not None else None,
             "Hisse": symbol,
             "Model Doğruluğu": None,
             "Son Kapanış": None,
@@ -83,6 +83,7 @@ def tahmin_uret(symbol):
             "Gerçek Durum (%)": None,
             "Fiyat Farkı": None,
             "Hedef Fiyat": None,
+            "Güncel Fiyat": None,
             "Güncel Fiyat": None
         }
 
