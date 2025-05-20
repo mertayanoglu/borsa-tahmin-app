@@ -1,7 +1,7 @@
 streamlit
-yfinance
-pandas
-numpy
-scikit-learn
 streamlit-extras
 streamlit-autorefresh
+yfinance
+scikit-learn
+pandas
+numpy
