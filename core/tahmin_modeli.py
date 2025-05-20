@@ -8,6 +8,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from streamlit_extras.dataframe_explorer import dataframe_explorer
+from streamlit_autorefresh import st_autorefresh
+
+# Sayfa ayarları
+st.set_page_config(page_title="BIST Tahmin Robotu", layout="wide")
+st_autorefresh(interval=60 * 1000, key="auto-refresh")
 
 BIST_40 = [
     "AKBNK", "AKSEN", "ALARK", "ASELS", "BIMAS", "DOHOL", "EKGYO", "ENJSA", "EREGL", "FROTO",
@@ -16,10 +21,9 @@ BIST_40 = [
     "TSKB", "TTKOM", "TTRAK", "TUPRS", "VAKBN", "VESBE", "YKBNK", "SOKM", "SKBNK", "ARCLK"
 ]
 
-@st.cache_data(ttl=60)
 def get_hisse_verisi(symbol="AKBNK", gun=90):
     symbol_yf = symbol + ".IS"
-    df = yf.download(symbol_yf, period=f"{gun}d", interval="1d")
+    df = yf.download(symbol_yf, period=f"{gun}d", interval="1d", progress=False)
     if df is None or len(df) < 30:
         raise ValueError(f"Yetersiz veri ({len(df) if df is not None else 0} satır)")
     df = df.reset_index()
@@ -91,32 +95,51 @@ def tahmin_uret(symbol):
             "Güncel Fiyat": None
         }
 
-
-# Streamlit arayüzü
-st.set_page_config(page_title="BIST Tahmin Robotu", layout="wide")
+# Başlık
 st.title("📊 BIST 40 Tahmin Robotu (yfinance)")
-st.caption("Bu tablo her 1 dakikada bir otomatik güncellenir. Artış ve düşüşler ayrı olarak listelenmiştir.")
+st.caption("Tahminler sadece butona tıklanınca güncellenir. Fiyatlar otomatik güncellenir.")
 
-sonuc = []
-progress = st.progress(0)
+# Tahminleri yeniden hesapla butonu
+if "tahminler" not in st.session_state:
+    st.session_state["tahminler"] = []
 
-for i, symbol in enumerate(BIST_40):
-    progress.progress((i + 1) / len(BIST_40))
-    result = tahmin_uret(symbol)
-    if result["Model Doğruluğu"] is not None and not str(result["Tahmin"]).startswith("Hata"):
-        sonuc.append(result)
+if st.button("🔁 Tahminleri Yeniden Hesapla"):
+    sonuc = []
+    progress = st.progress(0, text="Tahminler hesaplanıyor...")
+    for i, symbol in enumerate(BIST_40):
+        progress.progress((i + 1) / len(BIST_40))
+        result = tahmin_uret(symbol)
+        if result["Model Doğruluğu"] is not None and not str(result["Tahmin"]).startswith("Hata"):
+            sonuc.append(result)
+    progress.empty()
+    st.session_state["tahminler"] = sonuc
 
-progress.empty()
-df_sonuc = pd.DataFrame(sonuc)
-df_sonuc["Hedefe Ulaştı"] = df_sonuc.apply(lambda row: (row["Gerçek Durum (%)"] >= 2 and row["Tahmin"] == "⬆️ Artabilir") or
-                                        (row["Gerçek Durum (%)"] <= -2 and row["Tahmin"] == "⬇️ Düşebilir"), axis=1)
+# Her zaman güncel veri ile tablo oluştur
+if st.session_state["tahminler"]:
+    df_sonuc = pd.DataFrame(st.session_state["tahminler"])
 
-df_sonuc = df_sonuc.sort_values(by="Model Doğruluğu", ascending=False)
+    # Gerçek durumları güncelle
+    for i, row in df_sonuc.iterrows():
+        try:
+            current = yf.Ticker(row["Hisse"] + ".IS").history(period="1d")
+            if not current.empty:
+                current_price = float(current["Close"].iloc[-1])
+                df_sonuc.at[i, "Güncel Fiyat"] = current_price
+                df_sonuc.at[i, "Fiyat Farkı"] = round(current_price - row["Son Kapanış"], 2)
+                df_sonuc.at[i, "Gerçek Durum (%)"] = round((current_price - row["Son Kapanış"]) / row["Son Kapanış"] * 100, 2)
+        except:
+            pass
 
-if not df_sonuc.empty:
+    df_sonuc["Hedefe Ulaştı"] = df_sonuc.apply(lambda row: (
+        row["Gerçek Durum (%)"] >= 3 and row["Tahmin"] == "⬆️ Artabilir") or
+        (row["Gerçek Durum (%)"] <= -3 and row["Tahmin"] == "⬇️ Düşebilir"), axis=1)
+
+    df_sonuc = df_sonuc.sort_values(by="Model Doğruluğu", ascending=False)
+
     basari_orani = round(df_sonuc["Hedefe Ulaştı"].mean() * 100, 2)
     st.success(f"✅ Tahmin Başarı Oranı: {basari_orani}%")
     st.subheader("🎯 Toplam Tahmin Sayısı: " + str(len(df_sonuc)))
+
     artanlar = df_sonuc[df_sonuc["Tahmin"] == "⬆️ Artabilir"].style.background_gradient(cmap="Greens")
     azalanlar = df_sonuc[df_sonuc["Tahmin"] == "⬇️ Düşebilir"].style.background_gradient(cmap="Reds")
 
@@ -128,4 +151,4 @@ if not df_sonuc.empty:
     st.subheader("⬇️ Düşmesi Beklenenler")
     st.dataframe(azalanlar, use_container_width=True, height=500)
 else:
-    st.warning("Görüntülenecek geçerli veri bulunamadı. Lütfen daha sonra tekrar deneyin.")
+    st.info("🔔 Tahminleri görmek için yukarıdaki butona tıklayın.")
