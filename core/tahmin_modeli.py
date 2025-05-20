@@ -108,8 +108,8 @@ for i, symbol in enumerate(BIST_40):
 
 progress.empty()
 df_sonuc = pd.DataFrame(sonuc)
-df_sonuc["Hedefe Ulaştı"] = df_sonuc.apply(lambda row: (row["Gerçek Durum (%)"] >= 3 and row["Tahmin"] == "⬆️ Artabilir") or
-                                        (row["Gerçek Durum (%)"] <= -3 and row["Tahmin"] == "⬇️ Düşebilir"), axis=1)
+df_sonuc["Hedefe Ulaştı"] = df_sonuc.apply(lambda row: (row["Gerçek Durum (%)"] >= 2 and row["Tahmin"] == "⬆️ Artabilir") or
+                                        (row["Gerçek Durum (%)"] <= -2 and row["Tahmin"] == "⬇️ Düşebilir"), axis=1)
 
 df_sonuc = df_sonuc.sort_values(by="Model Doğruluğu", ascending=False)
 
