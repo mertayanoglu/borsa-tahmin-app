@@ -65,7 +65,7 @@ def tahmin_uret(symbol):
             change_pct = ((current_price - open_price) / open_price) * 100
 
         target_price = round(open_price * 1.03, 2) if prediction else round(open_price * 0.97, 2)
-        return {
+                    "Güncel Fiyat": current_price if change_pct is not None else None,
             "Hisse": symbol,
             "Model Doğruluğu": round(acc, 2),
             "Son Kapanış": open_price,
@@ -82,7 +82,8 @@ def tahmin_uret(symbol):
             "Tahmin": f"Hata: {str(e)}",
             "Gerçek Durum (%)": None,
             "Fiyat Farkı": None,
-            "Hedef Fiyat": None
+            "Hedef Fiyat": None,
+            "Güncel Fiyat": None
         }
 
 # Streamlit arayüzü
