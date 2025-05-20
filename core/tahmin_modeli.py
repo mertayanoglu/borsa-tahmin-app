@@ -60,22 +60,27 @@ def tahmin_uret(symbol):
         open_price = float(df["close"].iloc[-1])
         current = yf.Ticker(symbol + ".IS").history(period="1d")
         change_pct = None
+        current_price = None
+
         if not current.empty:
             current_price = float(current["Close"].iloc[-1])
             change_pct = ((current_price - open_price) / open_price) * 100
 
         target_price = round(open_price * 1.03, 2) if prediction else round(open_price * 0.97, 2)
-                    "Güncel Fiyat": current_price if change_pct is not None else None,
+
+        return {
             "Hisse": symbol,
             "Model Doğruluğu": round(acc, 2),
             "Son Kapanış": open_price,
             "Tahmin": "⬆️ Artabilir" if prediction else "⬇️ Düşebilir",
             "Gerçek Durum (%)": round(change_pct, 2) if change_pct is not None else None,
-            "Fiyat Farkı": round(current_price - open_price, 2) if change_pct is not None else None,
-            "Hedef Fiyat": target_price
+            "Fiyat Farkı": round(current_price - open_price, 2) if current_price is not None else None,
+            "Hedef Fiyat": target_price,
+            "Güncel Fiyat": current_price
         }
+
     except Exception as e:
-                    "Güncel Fiyat": current_price if change_pct is not None else None,
+        return {
             "Hisse": symbol,
             "Model Doğruluğu": None,
             "Son Kapanış": None,
@@ -83,9 +88,9 @@ def tahmin_uret(symbol):
             "Gerçek Durum (%)": None,
             "Fiyat Farkı": None,
             "Hedef Fiyat": None,
-            "Güncel Fiyat": None,
             "Güncel Fiyat": None
         }
+
 
 # Streamlit arayüzü
 st.set_page_config(page_title="BIST Tahmin Robotu", layout="wide")
