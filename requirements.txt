@@ -1,6 +1,7 @@
 streamlit
 yfinance
-scikit-learn
 pandas
 numpy
+scikit-learn
 streamlit-extras
+streamlit-autorefresh
