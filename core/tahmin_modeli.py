@@ -9,6 +9,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from streamlit_extras.dataframe_explorer import dataframe_explorer
 from streamlit_autorefresh import st_autorefresh
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.preprocessing import MinMaxScaler
 
 # Sayfa ayarları
 st.set_page_config(page_title="BIST Tahmin Robotu", layout="wide")
@@ -49,16 +51,30 @@ def get_hisse_verisi(symbol="AKBNK", gun=90):
 def tahmin_uret(symbol):
     try:
         df = get_hisse_verisi(symbol)
-        X = df[["EMA_10", "EMA_20", "RSI_14", "MACD"]]
-        y = df["y_price_increase"]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+        
+        # Yeni özellikler
+        df["volume_change"] = df["Volume"].pct_change()
+        df["prev_return"] = df["close"].pct_change()
+        df["price_diff_3day"] = df["close"] - df["close"].shift(3)
+        df["price_volatility"] = df["close"].rolling(window=5).std()
+        
+        df.dropna(inplace=True)
 
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
+        features = ["EMA_10", "EMA_20", "RSI_14", "MACD", "volume_change", "prev_return", "price_diff_3day", "price_volatility"]
+        X = df[features]
+        y = df["y_price_increase"]
+
+        # Ölçekleme
+        scaler = MinMaxScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, shuffle=False)
+
+        model = HistGradientBoostingClassifier(max_iter=200, max_depth=5, random_state=42)
         model.fit(X_train, y_train)
         acc = accuracy_score(y_test, model.predict(X_test))
 
-        latest_row = df.iloc[-1]
-        latest_features = latest_row[["EMA_10", "EMA_20", "RSI_14", "MACD"]].values.reshape(1, -1)
+        latest_features = scaler.transform([df[features].iloc[-1].values])
         prediction = model.predict(latest_features)[0]
 
         open_price = float(df["close"].iloc[-1])
